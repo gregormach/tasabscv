@@ -5,7 +5,6 @@
 /public/storage
 /storage/*.key
 /vendor
-*.sqlite
 .env
 .env.backup
 .env.production
