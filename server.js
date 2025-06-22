@@ -41,258 +41,81 @@ User.init(
   }
 );
 
-// Almacén de conexiones y modelos
-let dbRegistry = {};
-
-// Middleware para verificar conexión
-function validateConnection(req, res, next) {
-  const { connectionName } = req.params;
-  if (!dbRegistry[connectionName]) {
-    return res
-      .status(404)
-      .json({ error: `Conexión '${connectionName}' no encontrada` });
+class Configuracion extends Model {}
+Configuracion.init(
+  {
+    info: DataTypes.STRING,
+    usd: DataTypes.REAL,
+    eur: DataTypes.REAL,
+    cny: DataTypes.REAL,
+    otros: DataTypes.STRING,
+  },
+  {
+    sequelize: sequelizeA,
+    modelName: "configuraciones",
+    timestamps: false,
+    createdAt: false,
+    updatedAt: false,
   }
-  req.db = dbRegistry[connectionName];
-  next();
-}
+);
 
-// 1. Ruta para crear conexión
-app.post("/connections", async (req, res) => {
-  const { connectionName, dbPath } = req.body;
-
-  //console.log(dbRegistry[connectionName]);
-
-  if (!connectionName || !dbPath) {
-    return res
-      .status(400)
-      .json({ error: "Se requieren connectionName y dbPath" });
-  }
-
-  if (dbRegistry[connectionName]) {
-    return (
-      res
-        //.status(400)
-        .json({ error: "El nombre de conexión ya está en uso" })
-    );
-  }
-
-  //console.log(dbRegistry[connectionName]);
-
+app.get("/configuracion", async (req, res) => {
   try {
-    const sequelize = new Sequelize({
-      dialect: "sqlite",
-      define: {
-        timestamps: false,
-        createdAt: false,
-        updatedAt: false,
-      },
-      storage: dbPath,
-      logging: console.log, // Opcional: para depuración
-    });
-
-    await sequelize.authenticate();
-
-    // Estructura para almacenar la conexión y modelos
-    dbRegistry[connectionName] = {
-      sequelize,
-      models: {},
+    const tasa = await scrapeBCV();
+    const tasabcv = {
+      info: "1.0.1",
+      usd: tasa.usd,
+      eur: tasa.eur,
+      cny: tasa.cny,
+      otros: "@gregormach",
     };
-
-    res.json({
-      success: true,
-      message: `Conexión '${connectionName}' establecida con ${dbPath}`,
+    const [updated] = await Configuracion.update(tasabcv, {
+      where: { id: 1 },
     });
+    if (updated) {
+      const updatedRecord = await Configuracion.findByPk(1);
+      res.json(updatedRecord);
+    } else {
+      res.status(404).json({ error: "Registro no encontrado" });
+    }
   } catch (error) {
-    res.status(500).json({
-      error: "Error al conectar a la base de datos",
-      details: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// 2. Ruta para definir un modelo
-app.post("/:connectionName/models", validateConnection, async (req, res) => {
-  const { connectionName } = req.params;
-  const { modelName, attributes } = req.body;
-
-  if (!modelName || !attributes) {
-    return res
-      .status(400)
-      .json({ error: "Se requieren modelName y attributes" });
-  }
-
-  let newAttrib = {};
-  //const fechaActual = new Date();
-  //const fechaFormateada = fechaActual.toISOString().slice(0, 19).replace('T', ' ');
-  Object.entries(attributes).forEach(([key, value]) => {
-    if (value === "STRING") {
-      newAttrib[key] = { type: DataTypes.STRING(100) };
-    } else if (value === "REAL") {
-      newAttrib[key] = { type: DataTypes.REAL };
-    } else if (value === "INTEGER") {
-      if (key === "status" || key === "exento") {
-        newAttrib[key] = { type: DataTypes.INTEGER, defaultValue: 0 };
-      } else {
-        newAttrib[key] = { type: DataTypes.INTEGER };
-      }
-    } else if (value === "TEXT") {
-      newAttrib[key] = { type: DataTypes.TEXT };
-    }
-  });
-
+/*app.post("/configuracion", async (req, res) => {
   try {
-    const model = req.db.sequelize.define(modelName, newAttrib);
-    await model.sync();
-    req.db.models[modelName] = model;
+    const { info, usd, eur, cny, otros } = req.body;
 
-    /*if (modelName === "configs") {
-        await model.create({
-          viewMode: "list",
-        });
-      }*/
-
-    res.json({
-      success: true,
-      message: `Modelo '${modelName}' creado en '${connectionName}'`,
-    });
+    const configuracion = await Configuracion.create(req.body);
+    if (configuracion) {
+      res.status(201).json({ message: "Vendedor registrado exitosamente" });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// 3. Rutas CRUD para cada modelo
-
-// CREATE (POST)
-app.post(
-  "/:connectionName/:modelName",
-  validateConnection,
-  async (req, res) => {
-    const { modelName } = req.params;
-    const model = req.db.models[modelName];
-
-    if (!model) {
-      return res
-        .status(404)
-        .json({ error: `Modelo '${modelName}' no encontrado` });
-    }
-
-    try {
-      const record = await model.create(req.body);
-      res.status(201).json(record);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
-// READ ALL (GET)
-app.get("/:connectionName/:modelName", validateConnection, async (req, res) => {
-  const { modelName } = req.params;
-  const model = req.db.models[modelName];
-
-  if (!model) {
-    return res
-      .status(404)
-      .json({ error: `Modelo '${modelName}' no encontrado` });
-  }
-
+app.put("/configuracion/:id", async (req, res) => {
   try {
-    const records = await model.findAll();
-    res.json(records);
+    const { id } = req.params;
+    const [updated] = await Configuracion.update(req.body, {
+      where: { id },
+    });
+    if (updated) {
+      const updatedRecord = await Configuracion.findByPk(id);
+      res.json(updatedRecord);
+    } else {
+      res.status(404).json({ error: "Registro no encontrado" });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
-});
-
-// READ ONE (GET)
-app.get(
-  "/:connectionName/:modelName/:id",
-  validateConnection,
-  async (req, res) => {
-    const { modelName, id } = req.params;
-    const model = req.db.models[modelName];
-
-    if (!model) {
-      return res
-        .status(404)
-        .json({ error: `Modelo '${modelName}' no encontrado` });
-    }
-
-    try {
-      const record = await model.findByPk(id);
-      if (!record) {
-        return res.status(404).json({ error: "Registro no encontrado" });
-      }
-      res.json(record);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
-// UPDATE (PUT)
-app.put(
-  "/:connectionName/:modelName/:id",
-  validateConnection,
-  async (req, res) => {
-    const { modelName, id } = req.params;
-    const model = req.db.models[modelName];
-
-    if (!model) {
-      return res
-        .status(404)
-        .json({ error: `Modelo '${modelName}' no encontrado` });
-    }
-
-    try {
-      const [updated] = await model.update(req.body, {
-        where: { id },
-      });
-      if (updated) {
-        const updatedRecord = await model.findByPk(id);
-        res.json(updatedRecord);
-      } else {
-        res.status(404).json({ error: "Registro no encontrado" });
-      }
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
-
-// DELETE (DELETE)
-app.delete(
-  "/:connectionName/:modelName/:id",
-  validateConnection,
-  async (req, res) => {
-    const { modelName, id } = req.params;
-    const model = req.db.models[modelName];
-
-    if (!model) {
-      return res
-        .status(404)
-        .json({ error: `Modelo '${modelName}' no encontrado` });
-    }
-
-    try {
-      const deleted = await model.destroy({
-        where: { id },
-      });
-
-      if (deleted) {
-        res.json({ success: true, message: "Registro eliminado" });
-      } else {
-        res.status(404).json({ error: "Registro no encontrado" });
-      }
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
+});*/
 
 app.get("/tasa", async (req, res) => {
-  const tasa = await scrapeBCV();
-  return res.json(tasa);
+  const configuracion = await Configuracion.findAll();
+  return res.json(configuracion[0]);
 });
 
 // Iniciar servidor
