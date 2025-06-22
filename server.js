@@ -94,12 +94,19 @@ app.get("/configuracion", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});
+});*/
 
 app.put("/configuracion/:id", async (req, res) => {
   try {
+    if (req.body.token !== "$$**963852741tas") {
+      return res.status(404).json({ error: "Error token!" });
+    }
     const { id } = req.params;
-    const [updated] = await Configuracion.update(req.body, {
+    const tasabcv = {
+      info: req.body.info,
+      otros: req.body.otros,
+    };
+    const [updated] = await Configuracion.update(tasabcv, {
       where: { id },
     });
     if (updated) {
@@ -111,7 +118,7 @@ app.put("/configuracion/:id", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});*/
+});
 
 app.get("/tasa", async (req, res) => {
   const configuracion = await Configuracion.findAll();
