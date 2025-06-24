@@ -49,6 +49,7 @@ Configuracion.init(
     eur: DataTypes.REAL,
     cny: DataTypes.REAL,
     otros: DataTypes.STRING,
+    alias: DataTypes.STRING,
   },
   {
     sequelize: sequelizeA,
@@ -63,11 +64,9 @@ app.get("/configuracion", async (req, res) => {
   try {
     const tasa = await scrapeBCV();
     const tasabcv = {
-      info: "1.0.1",
       usd: tasa.usd,
       eur: tasa.eur,
       cny: tasa.cny,
-      otros: "@gregormach",
     };
     const [updated] = await Configuracion.update(tasabcv, {
       where: { id: 1 },
@@ -83,19 +82,6 @@ app.get("/configuracion", async (req, res) => {
   }
 });
 
-/*app.post("/configuracion", async (req, res) => {
-  try {
-    const { info, usd, eur, cny, otros } = req.body;
-
-    const configuracion = await Configuracion.create(req.body);
-    if (configuracion) {
-      res.status(201).json({ message: "Vendedor registrado exitosamente" });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});*/
-
 app.put("/configuracion/:id", async (req, res) => {
   try {
     if (req.body.token !== "$$**963852741tas") {
@@ -105,6 +91,7 @@ app.put("/configuracion/:id", async (req, res) => {
     const tasabcv = {
       info: req.body.info,
       otros: req.body.otros,
+      alias: req.body.alias,
     };
     const [updated] = await Configuracion.update(tasabcv, {
       where: { id },
