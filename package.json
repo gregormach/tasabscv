@@ -21,8 +21,6 @@
     "express-session": "^1.18.1",
     "morgan": "^1.10.0",
     "nodemon": "^3.1.10",
-    "postgres": "^3.4.7",
-    "sequelize": "^6.37.7",
-    "sqlite3": "^5.1.7"
+    "postgres": "^3.4.7"
   }
 }
