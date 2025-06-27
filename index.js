@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 const app = express();
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -14,6 +15,16 @@ import * as cheerio from "cheerio";
 app.use(morgan("combined"));
 
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(cors());
+
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.header("Access-Control-Allow-Credentials", true);
+  next();
+});
+
 app.use(bodyParser.json());
 
 const supabase = createClient(
