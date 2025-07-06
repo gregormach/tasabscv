@@ -57,6 +57,8 @@ app.put("/configuracion", async (req, res) => {
       info: req.body.info,
       otros: req.body.otros,
       alias: req.body.alias,
+      urlconversor: req.body.urlconversor,
+      urlcalculadora: req.body.urlcalculadora,
     };
     const { data, error } = await supabase
       .from("configuraciones")
